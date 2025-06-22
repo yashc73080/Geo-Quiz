@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { regions } from '../data/countriesData'
+import { regions, getCountriesForRegion } from '../data/countriesData'
+import { getContinent } from '../data/worldCountriesGeoJSON'
 import { useWorldCountriesData } from '../hooks/useWorldCountriesData'
 
 // Fix for default markers in React-Leaflet
@@ -45,22 +46,33 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
 
   // Style function for countries
   const getCountryStyle = useCallback((feature) => {
-    const regionData = regions[selectedRegion]
-    const isInRegion = selectedRegion === 'World' || 
-      regionData.countries.includes(feature.properties.NAME) ||
-      feature.properties.CONTINENT === selectedRegion ||
-      feature.properties.SUBREGION?.includes(selectedRegion)
+    const countryName = feature.properties.name || feature.properties.NAME
+    
+    // Check if country is in the selected region using the continent mapping
+    let isInRegion = false
+    if (selectedRegion === 'World') {
+      isInRegion = true
+    } else {
+      const regionData = regions[selectedRegion]
+      if (regionData && regionData.continent) {
+        const continent = getContinent(countryName)
+        isInRegion = continent === regionData.continent
+      }
+    }
     
     const isCorrectlyGuessed = correctlyGuessedCountries.some(
-      country => country.properties.NAME === feature.properties.NAME
+      country => {
+        const guessedName = country.properties.name || country.properties.NAME
+        return guessedName === countryName
+      }
     )
 
     const isIncorrectlySelected = incorrectCountry && 
-      incorrectCountry.properties.NAME === feature.properties.NAME
+      (incorrectCountry.properties.name || incorrectCountry.properties.NAME) === countryName
 
     // Check if this is the target country and should be highlighted as a hint
-    const isTargetCountryHint = currentCountry && 
-      currentCountry.properties.NAME === feature.properties.NAME &&
+    const currentCountryName = currentCountry?.properties?.name || currentCountry?.properties?.NAME
+    const isTargetCountryHint = currentCountryName === countryName &&
       incorrectAttempts >= 3 &&
       gameState === 'playing'
     
@@ -120,11 +132,19 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
 
   // Handle country interactions - wrapped in useCallback to prevent recreation
   const onEachCountry = useCallback((feature, layer) => {
-    const regionData = regions[selectedRegion]
-    const isInRegion = selectedRegion === 'World' || 
-      regionData.countries.includes(feature.properties.NAME) ||
-      feature.properties.CONTINENT === selectedRegion ||
-      feature.properties.SUBREGION?.includes(selectedRegion)
+    const countryName = feature.properties.name || feature.properties.NAME
+    
+    // Check if country is in the selected region using the continent mapping
+    let isInRegion = false
+    if (selectedRegion === 'World') {
+      isInRegion = true
+    } else {
+      const regionData = regions[selectedRegion]
+      if (regionData && regionData.continent) {
+        const continent = getContinent(countryName)
+        isInRegion = continent === regionData.continent
+      }
+    }
       
     // Always attach events, but check conditions inside the handlers
     layer.on({
@@ -133,11 +153,11 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         
         // Don't apply hover effects if this country is currently showing as incorrect
         const isIncorrectlySelected = incorrectCountry && 
-          incorrectCountry.properties.NAME === feature.properties.NAME
+          (incorrectCountry.properties.name || incorrectCountry.properties.NAME) === countryName
 
         // Don't apply hover effects if this is the target country being hinted
-        const isTargetCountryHint = currentCountry && 
-          currentCountry.properties.NAME === feature.properties.NAME &&
+        const currentCountryName = currentCountry?.properties?.name || currentCountry?.properties?.NAME
+        const isTargetCountryHint = currentCountryName === countryName &&
           incorrectAttempts >= 3
         
         if (isIncorrectlySelected || isTargetCountryHint) return
@@ -158,7 +178,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         layer.setStyle(getCountryStyle(feature))
       },
       click: (e) => {
-        console.log(`Clicked on ${feature.properties.NAME}, gameState: ${gameState}, isInRegion: ${isInRegion}`)
+        console.log(`Clicked on ${countryName}, gameState: ${gameState}, isInRegion: ${isInRegion}`)
         if (isInRegion && gameState === 'playing' && onCountrySelect) {
           console.log('Calling onCountrySelect')
           onCountrySelect(feature)
@@ -183,7 +203,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
       if (element) {
         element.setAttribute('tabindex', '0')
         element.setAttribute('role', 'button')
-        element.setAttribute('aria-label', `Select ${feature.properties.NAME}`)
+        element.setAttribute('aria-label', `Select ${countryName}`)
       }
     }
   }, [selectedRegion, gameState, onCountrySelect, getCountryStyle, incorrectCountry, currentCountry, incorrectAttempts])

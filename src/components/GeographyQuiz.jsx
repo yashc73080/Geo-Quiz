@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { MapPin, Trophy, Target, RotateCcw, Play } from 'lucide-react'
 import WorldMap from './WorldMap'
-import { regions } from '../data/countriesData'
+import { regions, getCountriesForRegion } from '../data/countriesData'
 import { useWorldCountriesData } from '../hooks/useWorldCountriesData'
 
 const GeographyQuiz = () => {
@@ -44,19 +44,9 @@ const GeographyQuiz = () => {
     
     // Reset available countries for the selected region
     if (worldCountriesFeatures.length > 0) {
-      const regionData = regions[selectedRegion]
-      let countries = []
+      const countries = getCountriesForRegion(selectedRegion, worldCountriesFeatures)
       
-      if (selectedRegion === 'World') {
-        countries = worldCountriesFeatures
-      } else {
-        countries = worldCountriesFeatures.filter(feature => 
-          regionData.countries.includes(feature.properties.NAME) ||
-          feature.properties.CONTINENT === selectedRegion ||
-          feature.properties.SUBREGION?.includes(selectedRegion)
-        )
-      }
-      
+      console.log(`Starting game with ${countries.length} countries for ${selectedRegion}`)
       setAvailableCountries([...countries])
     }
   }, [selectedRegion, worldCountriesFeatures])
@@ -65,19 +55,9 @@ const GeographyQuiz = () => {
   useEffect(() => {
     if (!worldCountriesFeatures.length) return // Wait for data to load
     
-    const regionData = regions[selectedRegion]
-    let countries = []
+    const countries = getCountriesForRegion(selectedRegion, worldCountriesFeatures)
     
-    if (selectedRegion === 'World') {
-      countries = worldCountriesFeatures
-    } else {
-      countries = worldCountriesFeatures.filter(feature => 
-        regionData.countries.includes(feature.properties.NAME) ||
-        feature.properties.CONTINENT === selectedRegion ||
-        feature.properties.SUBREGION?.includes(selectedRegion)
-      )
-    }
-    
+    console.log(`Filtered countries for ${selectedRegion}:`, countries.map(c => c.properties.name || c.properties.NAME))
     setAvailableCountries([...countries])
   }, [selectedRegion, worldCountriesFeatures])
 
@@ -94,7 +74,7 @@ const GeographyQuiz = () => {
     const randomIndex = Math.floor(Math.random() * availableCountries.length)
     const selectedCountry = availableCountries[randomIndex]
     
-    console.log('Setting currentCountry to:', selectedCountry.properties.NAME)
+    console.log('Setting currentCountry to:', selectedCountry.properties.NAME || selectedCountry.properties.name)
     setCurrentCountry(selectedCountry)
     setIncorrectAttempts(0) // Reset incorrect attempts for new question
     
@@ -104,8 +84,8 @@ const GeographyQuiz = () => {
 
   // Handle country selection from map - using refs to avoid stale closure
   const handleCountrySelect = useCallback((selectedFeature) => {
-    console.log('handleCountrySelect called with:', selectedFeature.properties.NAME)
-    console.log('Current state - currentCountry from ref:', currentCountryRef.current?.properties?.NAME, 'gameState from ref:', gameStateRef.current)
+    console.log('handleCountrySelect called with:', selectedFeature.properties.NAME || selectedFeature.properties.name)
+    console.log('Current state - currentCountry from ref:', currentCountryRef.current?.properties?.NAME || currentCountryRef.current?.properties?.name, 'gameState from ref:', gameStateRef.current)
     
     if (!currentCountryRef.current || gameStateRef.current !== 'playing') {
       console.log('Ignoring click - no current country or not playing', { 
@@ -117,14 +97,13 @@ const GeographyQuiz = () => {
     }
 
     setTotalQuestions(prev => prev + 1)
+    console.log('Selected:', selectedFeature.properties.NAME || selectedFeature.properties.name, selectedFeature.properties.ISO_A3)
+    console.log('Target:', currentCountryRef.current.properties.NAME || currentCountryRef.current.properties.name, currentCountryRef.current.properties.ISO_A3)
     
-    console.log('Selected:', selectedFeature.properties.NAME, selectedFeature.properties.ISO_A3)
-    console.log('Target:', currentCountryRef.current.properties.NAME, currentCountryRef.current.properties.ISO_A3)
-    
-    // Fix the comparison logic - only use ISO if both countries have valid ISO codes
-    const selectedName = selectedFeature.properties.NAME
+    // Fix the comparison logic - handle both uppercase and lowercase property names
+    const selectedName = selectedFeature.properties.NAME || selectedFeature.properties.name
     const selectedISO = selectedFeature.properties.ISO_A3
-    const targetName = currentCountryRef.current.properties.NAME
+    const targetName = currentCountryRef.current.properties.NAME || currentCountryRef.current.properties.name
     const targetISO = currentCountryRef.current.properties.ISO_A3
     
     const isCorrectByName = selectedName === targetName
@@ -201,19 +180,7 @@ const GeographyQuiz = () => {
   const getProgress = () => {
     if (!worldCountriesFeatures.length) return 0
     
-    const regionData = regions[selectedRegion]
-    let totalCountries = 0
-    
-    if (selectedRegion === 'World') {
-      totalCountries = worldCountriesFeatures.length
-    } else {
-      totalCountries = worldCountriesFeatures.filter(feature => 
-        regionData.countries.includes(feature.properties.NAME) ||
-        feature.properties.CONTINENT === selectedRegion ||
-        feature.properties.SUBREGION?.includes(selectedRegion)
-      ).length
-    }
-    
+    const totalCountries = getCountriesForRegion(selectedRegion, worldCountriesFeatures).length
     const completed = totalCountries - availableCountries.length
     return totalCountries > 0 ? (completed / totalCountries) * 100 : 0
   }
@@ -225,7 +192,7 @@ const GeographyQuiz = () => {
 
   // Add this useEffect to debug currentCountry changes
   useEffect(() => {
-    console.log('Current country changed:', currentCountry?.properties?.NAME)
+    console.log('Current country changed:', currentCountry?.properties?.NAME || currentCountry?.properties?.name)
   }, [currentCountry])
 
   return (
@@ -297,7 +264,7 @@ const GeographyQuiz = () => {
         <div className="current-question">
           <p className="question-text">
             <MapPin size={24} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
-            Find: <strong>{currentCountry.properties.NAME}</strong>
+            Find: <strong>{currentCountry.properties.NAME || currentCountry.properties.name}</strong>
           </p>
         </div>
       )}
