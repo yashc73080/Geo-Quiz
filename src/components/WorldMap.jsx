@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -31,64 +31,84 @@ const MapViewController = ({ selectedRegion }) => {
   return null
 }
 
-const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [] }) => {
+const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [], feedback }) => {
   const geoJsonRef = useRef()
+  const [incorrectCountry, setIncorrectCountry] = useState(null)
   const { countryData, isLoading } = useWorldCountriesData()
 
-  console.log('WorldMap render:', { gameState, selectedRegion, hasOnCountrySelect: !!onCountrySelect })
+  // Clear incorrect country highlight when feedback changes
+  useEffect(() => {
+    if (!feedback || feedback.type !== 'incorrect') {
+      setIncorrectCountry(null)
+    }
+  }, [feedback])
+
   // Style function for countries
-  const getCountryStyle = (feature) => {
-    const isCorrectlyGuessed = correctlyGuessedCountries.some(country => 
-      country.properties.NAME === feature.properties.NAME ||
-      country.properties.ISO_A3 === feature.properties.ISO_A3
-    )
-    
-    // Filter countries based on selected region
+  const getCountryStyle = useCallback((feature) => {
     const regionData = regions[selectedRegion]
     const isInRegion = selectedRegion === 'World' || 
       regionData.countries.includes(feature.properties.NAME) ||
       feature.properties.CONTINENT === selectedRegion ||
       feature.properties.SUBREGION?.includes(selectedRegion)
     
-    if (!isInRegion) {
+    const isCorrectlyGuessed = correctlyGuessedCountries.some(
+      country => country.properties.NAME === feature.properties.NAME
+    )
+
+    const isIncorrectlySelected = incorrectCountry && 
+      incorrectCountry.properties.NAME === feature.properties.NAME
+    
+    if (isIncorrectlySelected) {
       return {
-        fillColor: '#f0f0f0',
-        weight: 1,
-        opacity: 0.3,
-        color: '#ccc',
-        fillOpacity: 0.2,
-        interactive: false
+        fillColor: '#e74c3c',
+        weight: 3,
+        opacity: 1,
+        color: '#c0392b',
+        dashArray: '',
+        fillOpacity: 0.8
       }
     }
     
-    // Color logic: Green for correctly guessed, blue for unguessed (no special highlight for current target)
-    let fillColor = '#3498db' // Default blue
-    let borderColor = '#2980b9'
-    
     if (isCorrectlyGuessed) {
-      fillColor = '#27ae60' // Green for correctly guessed
-      borderColor = '#229954'
-    }
       return {
-      fillColor: fillColor,
+        fillColor: '#27ae60',
+        weight: 2,
+        opacity: 1,
+        color: '#1e8449',
+        dashArray: '',
+        fillOpacity: 0.8
+      }
+    }
+    
+    if (!isInRegion) {
+      return {
+        fillColor: '#95a5a6',
+        weight: 1,
+        opacity: 0.5,
+        color: '#7f8c8d',
+        dashArray: '3',
+        fillOpacity: 0.3
+      }
+    }
+    
+    return {
+      fillColor: '#3498db',
       weight: 2,
       opacity: 1,
-      color: borderColor,
+      color: '#2980b9',
       dashArray: '',
-      fillOpacity: 0.7,
-      interactive: gameState === 'playing' && isInRegion,
-      cursor: gameState === 'playing' && isInRegion ? 'pointer' : 'default'
+      fillOpacity: 0.7
     }
-  }
-  // Handle country interactions
-  const onEachCountry = (feature, layer) => {
+  }, [selectedRegion, correctlyGuessedCountries, incorrectCountry])
+
+  // Handle country interactions - wrapped in useCallback to prevent recreation
+  const onEachCountry = useCallback((feature, layer) => {
     const regionData = regions[selectedRegion]
     const isInRegion = selectedRegion === 'World' || 
       regionData.countries.includes(feature.properties.NAME) ||
       feature.properties.CONTINENT === selectedRegion ||
       feature.properties.SUBREGION?.includes(selectedRegion)
-      console.log(`Setting up events for ${feature.properties.NAME}`)
-
+      
     // Always attach events, but check conditions inside the handlers
     layer.on({
       mouseover: (e) => {
@@ -113,6 +133,14 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         console.log(`Clicked on ${feature.properties.NAME}, gameState: ${gameState}, isInRegion: ${isInRegion}`)
         if (isInRegion && gameState === 'playing' && onCountrySelect) {
           console.log('Calling onCountrySelect')
+          
+          // Set incorrect country for visual feedback
+          if (feedback?.type === 'incorrect') {
+            setIncorrectCountry(feature)
+            // Clear after 2 seconds
+            setTimeout(() => setIncorrectCountry(null), 2000)
+          }
+          
           onCountrySelect(feature)
         } else {
           console.log('Click ignored - conditions not met')
@@ -138,7 +166,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         element.setAttribute('aria-label', `Select ${feature.properties.NAME}`)
       }
     }
-  }
+  }, [selectedRegion, gameState, onCountrySelect, getCountryStyle, feedback])
 
   // Get initial map bounds
   const getInitialBounds = () => {
@@ -151,6 +179,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
     }
     return [[-90, -180], [90, 180]] // World bounds
   }
+
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       {isLoading && (
@@ -189,12 +218,14 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         boxZoom={false}
         keyboard={true}
         attributionControl={true}
-      >        <TileLayer
+      >
+        <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           maxZoom={10}
           minZoom={2}
-        />        <GeoJSON
+        />
+        <GeoJSON
           ref={geoJsonRef}
           data={countryData}
           style={getCountryStyle}

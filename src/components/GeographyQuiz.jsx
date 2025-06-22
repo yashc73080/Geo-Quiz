@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { MapPin, Trophy, Target, RotateCcw, Play } from 'lucide-react'
 import WorldMap from './WorldMap'
 import { regions } from '../data/countriesData'
@@ -15,8 +15,51 @@ const GeographyQuiz = () => {
   const [feedback, setFeedback] = useState(null)
   const [gameComplete, setGameComplete] = useState(false)
 
+  // Use ref to maintain current country for click handler
+  const currentCountryRef = useRef(null)
+  const gameStateRef = useRef('menu')
+
+  // Update refs when state changes
+  useEffect(() => {
+    currentCountryRef.current = currentCountry
+  }, [currentCountry])
+
+  useEffect(() => {
+    gameStateRef.current = gameState
+  }, [gameState])
+
   // Use the custom hook to get real country data
   const { features: worldCountriesFeatures, isLoading: countriesLoading } = useWorldCountriesData()
+
+  // Start game function
+  const startGame = useCallback(() => {
+    setGameState('playing')
+    setScore(0)
+    setTotalQuestions(0)
+    setCurrentCountry(null)
+    setCorrectlyGuessedCountries([])
+    setFeedback(null)
+    setGameComplete(false)
+    
+    // Reset available countries for the selected region
+    if (worldCountriesFeatures.length > 0) {
+      const regionData = regions[selectedRegion]
+      let countries = []
+      
+      if (selectedRegion === 'World') {
+        countries = worldCountriesFeatures
+      } else {
+        countries = worldCountriesFeatures.filter(feature => 
+          regionData.countries.includes(feature.properties.NAME) ||
+          feature.properties.CONTINENT === selectedRegion ||
+          feature.properties.SUBREGION?.includes(selectedRegion)
+        )
+      }
+      
+      setAvailableCountries([...countries])
+    }
+  }, [selectedRegion, worldCountriesFeatures])
+
   // Initialize available countries based on selected region
   useEffect(() => {
     if (!worldCountriesFeatures.length) return // Wait for data to load
@@ -39,6 +82,8 @@ const GeographyQuiz = () => {
 
   // Select a random country for the current question
   const selectRandomCountry = useCallback(() => {
+    console.log('selectRandomCountry called, availableCountries length:', availableCountries.length)
+    
     if (availableCountries.length === 0) {
       setGameComplete(true)
       setGameState('finished')
@@ -47,60 +92,44 @@ const GeographyQuiz = () => {
     
     const randomIndex = Math.floor(Math.random() * availableCountries.length)
     const selectedCountry = availableCountries[randomIndex]
+    
+    console.log('Setting currentCountry to:', selectedCountry.properties.NAME)
     setCurrentCountry(selectedCountry)
     
     // Remove the selected country from available countries
     setAvailableCountries(prev => prev.filter((_, index) => index !== randomIndex))
   }, [availableCountries])
-  // Start a new game
-  const startGame = () => {
-    if (!worldCountriesFeatures.length) {
-      console.warn('Cannot start game: country data not loaded yet')
+
+  // Handle country selection from map - using refs to avoid stale closure
+  const handleCountrySelect = useCallback((selectedFeature) => {
+    console.log('handleCountrySelect called with:', selectedFeature.properties.NAME)
+    console.log('Current state - currentCountry from ref:', currentCountryRef.current?.properties?.NAME, 'gameState from ref:', gameStateRef.current)
+    
+    if (!currentCountryRef.current || gameStateRef.current !== 'playing') {
+      console.log('Ignoring click - no current country or not playing', { 
+        currentCountry: !!currentCountryRef.current, 
+        currentCountryName: currentCountryRef.current?.properties?.NAME,
+        gameState: gameStateRef.current 
+      })
       return
     }
-      setGameState('playing')
-    setScore(0)
-    setTotalQuestions(0)
-    setGameComplete(false)
-    setFeedback(null)
-    setCorrectlyGuessedCountries([]) // Reset correctly guessed countries
-    
-    // Reset available countries
-    const regionData = regions[selectedRegion]
-    let countries = []
-    
-    if (selectedRegion === 'World') {
-      countries = worldCountriesFeatures
-    } else {
-      countries = worldCountriesFeatures.filter(feature => 
-        regionData.countries.includes(feature.properties.NAME) ||
-        feature.properties.CONTINENT === selectedRegion ||
-        feature.properties.SUBREGION?.includes(selectedRegion)
-      )
-    }
-    
-    setAvailableCountries([...countries])
-  }
-  // Handle country selection from map
-  const handleCountrySelect = (selectedFeature) => {
-    if (!currentCountry || gameState !== 'playing') return
 
     setTotalQuestions(prev => prev + 1)
     
     console.log('Selected:', selectedFeature.properties.NAME, selectedFeature.properties.ISO_A3)
-    console.log('Target:', currentCountry.properties.NAME, currentCountry.properties.ISO_A3)
+    console.log('Target:', currentCountryRef.current.properties.NAME, currentCountryRef.current.properties.ISO_A3)
     
-    const isCorrect = selectedFeature.properties.NAME === currentCountry.properties.NAME ||
-                     selectedFeature.properties.ISO_A3 === currentCountry.properties.ISO_A3
+    const isCorrect = selectedFeature.properties.NAME === currentCountryRef.current.properties.NAME ||
+                    selectedFeature.properties.ISO_A3 === currentCountryRef.current.properties.ISO_A3
 
     console.log('Is correct:', isCorrect)
 
     if (isCorrect) {
       setScore(prev => prev + 1)
-      setCorrectlyGuessedCountries(prev => [...prev, currentCountry]) // Add to correctly guessed
+      setCorrectlyGuessedCountries(prev => [...prev, currentCountryRef.current])
       setFeedback({
         type: 'correct',
-        message: `Correct! That's ${currentCountry.properties.NAME}!`
+        message: `Correct! That's ${currentCountryRef.current.properties.NAME}!`
       })
       
       // Select next country after a short delay
@@ -111,7 +140,7 @@ const GeographyQuiz = () => {
     } else {
       setFeedback({
         type: 'incorrect',
-        message: `Incorrect. Try again! You selected ${selectedFeature.properties.NAME}`
+        message: `Incorrect. That's ${selectedFeature.properties.NAME}. Try again! Looking for ${currentCountryRef.current.properties.NAME}.`
       })
       
       // Clear feedback after delay but don't move to next question
@@ -119,14 +148,18 @@ const GeographyQuiz = () => {
         setFeedback(null)
       }, 2000)
     }
-  }
+  }, [selectRandomCountry])
 
   // Start the first question when game begins
   useEffect(() => {
+    console.log('useEffect for starting question:', { gameState, availableCountriesLength: availableCountries.length, hasCurrentCountry: !!currentCountry })
+    
     if (gameState === 'playing' && availableCountries.length > 0 && !currentCountry) {
+      console.log('Starting first question')
       selectRandomCountry()
     }
   }, [gameState, availableCountries, currentCountry, selectRandomCountry])
+
   // Handle region change
   const handleRegionChange = (region) => {
     setSelectedRegion(region)
@@ -136,6 +169,7 @@ const GeographyQuiz = () => {
       setCorrectlyGuessedCountries([]) // Reset correctly guessed when changing region
     }
   }
+
   // Calculate progress percentage
   const getProgress = () => {
     if (!worldCountriesFeatures.length) return 0
@@ -156,6 +190,16 @@ const GeographyQuiz = () => {
     const completed = totalCountries - availableCountries.length
     return totalCountries > 0 ? (completed / totalCountries) * 100 : 0
   }
+
+  // Add this useEffect to debug feedback changes
+  useEffect(() => {
+    console.log('Feedback state changed:', feedback)
+  }, [feedback])
+
+  // Add this useEffect to debug currentCountry changes
+  useEffect(() => {
+    console.log('Current country changed:', currentCountry?.properties?.NAME)
+  }, [currentCountry])
 
   return (
     <div className="geography-quiz">
@@ -232,12 +276,14 @@ const GeographyQuiz = () => {
       )}
 
       {/* Map Container */}
-      <div className="map-container">        <WorldMap 
+      <div className="map-container">
+        <WorldMap 
           selectedRegion={selectedRegion}
           onCountrySelect={handleCountrySelect}
           currentCountry={currentCountry}
           gameState={gameState}
           correctlyGuessedCountries={correctlyGuessedCountries}
+          feedback={feedback}
         />
 
         {/* Game State Messages */}
@@ -250,7 +296,9 @@ const GeographyQuiz = () => {
             </p>
             <p className="message-content">
               <strong>Region:</strong> {regions[selectedRegion].name}
-            </p>            <div className="action-buttons">              <button 
+            </p>
+            <div className="action-buttons">
+              <button 
                 className="btn btn-primary" 
                 onClick={startGame}
                 disabled={countriesLoading || !worldCountriesFeatures.length}
