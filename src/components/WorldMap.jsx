@@ -31,7 +31,7 @@ const MapViewController = ({ selectedRegion }) => {
   return null
 }
 
-const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [], feedback }) => {
+const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [], feedback, incorrectAttempts = 0 }) => {
   const geoJsonRef = useRef()
   const [incorrectCountry, setIncorrectCountry] = useState(null)
   const { countryData, isLoading } = useWorldCountriesData()
@@ -57,6 +57,12 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
 
     const isIncorrectlySelected = incorrectCountry && 
       incorrectCountry.properties.NAME === feature.properties.NAME
+
+    // Check if this is the target country and should be highlighted as a hint
+    const isTargetCountryHint = currentCountry && 
+      currentCountry.properties.NAME === feature.properties.NAME &&
+      incorrectAttempts >= 3 &&
+      gameState === 'playing'
     
     if (isIncorrectlySelected) {
       return {
@@ -66,6 +72,17 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         color: '#c0392b',
         dashArray: '',
         fillOpacity: 0.8
+      }
+    }
+
+    if (isTargetCountryHint) {
+      return {
+        fillColor: '#f1c40f', // Gold/yellow color for hint
+        weight: 3,
+        opacity: 1,
+        color: '#f39c12',
+        dashArray: '',
+        fillOpacity: 0.9
       }
     }
     
@@ -99,7 +116,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
       dashArray: '',
       fillOpacity: 0.7
     }
-  }, [selectedRegion, correctlyGuessedCountries, incorrectCountry])
+  }, [selectedRegion, correctlyGuessedCountries, incorrectCountry, currentCountry, incorrectAttempts, gameState])
 
   // Handle country interactions - wrapped in useCallback to prevent recreation
   const onEachCountry = useCallback((feature, layer) => {
@@ -113,6 +130,17 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
     layer.on({
       mouseover: (e) => {
         if (!isInRegion || gameState !== 'playing') return
+        
+        // Don't apply hover effects if this country is currently showing as incorrect
+        const isIncorrectlySelected = incorrectCountry && 
+          incorrectCountry.properties.NAME === feature.properties.NAME
+
+        // Don't apply hover effects if this is the target country being hinted
+        const isTargetCountryHint = currentCountry && 
+          currentCountry.properties.NAME === feature.properties.NAME &&
+          incorrectAttempts >= 3
+        
+        if (isIncorrectlySelected || isTargetCountryHint) return
         
         const layer = e.target
         layer.setStyle({
@@ -158,7 +186,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         element.setAttribute('aria-label', `Select ${feature.properties.NAME}`)
       }
     }
-  }, [selectedRegion, gameState, onCountrySelect, getCountryStyle])
+  }, [selectedRegion, gameState, onCountrySelect, getCountryStyle, incorrectCountry, currentCountry, incorrectAttempts])
 
   // Effect to handle incorrect country highlighting
   useEffect(() => {
@@ -238,7 +266,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
           data={countryData}
           style={getCountryStyle}
           onEachFeature={onEachCountry}
-          key={`${selectedRegion}-${gameState}-${correctlyGuessedCountries.length}-${isLoading ? 'loading' : 'loaded'}`}
+          key={`${selectedRegion}-${gameState}-${correctlyGuessedCountries.length}-${incorrectAttempts}-${isLoading ? 'loading' : 'loaded'}`}
         />
         
         <MapViewController selectedRegion={selectedRegion} />

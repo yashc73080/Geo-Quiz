@@ -14,6 +14,7 @@ const GeographyQuiz = () => {
   const [correctlyGuessedCountries, setCorrectlyGuessedCountries] = useState([])
   const [feedback, setFeedback] = useState(null)
   const [gameComplete, setGameComplete] = useState(false)
+  const [incorrectAttempts, setIncorrectAttempts] = useState(0)
 
   // Use ref to maintain current country for click handler
   const currentCountryRef = useRef(null)
@@ -95,13 +96,13 @@ const GeographyQuiz = () => {
     
     console.log('Setting currentCountry to:', selectedCountry.properties.NAME)
     setCurrentCountry(selectedCountry)
+    setIncorrectAttempts(0) // Reset incorrect attempts for new question
     
     // Remove the selected country from available countries
     setAvailableCountries(prev => prev.filter((_, index) => index !== randomIndex))
   }, [availableCountries])
 
   // Handle country selection from map - using refs to avoid stale closure
-    // Handle country selection from map - using refs to avoid stale closure
   const handleCountrySelect = useCallback((selectedFeature) => {
     console.log('handleCountrySelect called with:', selectedFeature.properties.NAME)
     console.log('Current state - currentCountry from ref:', currentCountryRef.current?.properties?.NAME, 'gameState from ref:', gameStateRef.current)
@@ -144,6 +145,7 @@ const GeographyQuiz = () => {
     if (isCorrect) {
       setScore(prev => prev + 1)
       setCorrectlyGuessedCountries(prev => [...prev, currentCountryRef.current])
+      setIncorrectAttempts(0) // Reset incorrect attempts
       setFeedback({
         type: 'correct',
         message: `Correct! That's ${targetName}!`
@@ -155,6 +157,13 @@ const GeographyQuiz = () => {
         selectRandomCountry()
       }, 1500)
     } else {
+      // Increment incorrect attempts
+      setIncorrectAttempts(prev => {
+        const newAttempts = prev + 1
+        console.log('Incorrect attempts:', newAttempts)
+        return newAttempts
+      })
+      
       setFeedback({
         type: 'incorrect',
         message: `Incorrect. That's ${selectedName}.`,
@@ -302,6 +311,7 @@ const GeographyQuiz = () => {
           gameState={gameState}
           correctlyGuessedCountries={correctlyGuessedCountries}
           feedback={feedback}
+          incorrectAttempts={incorrectAttempts}
         />
 
         {/* Game State Messages */}
