@@ -11,131 +11,90 @@ const GeographyQuiz = () => {
   const [score, setScore] = useState(0)
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [availableCountries, setAvailableCountries] = useState([])
-  const [correctlyGuessedCountries, setCorrectlyGuessedCountries] = useState([])
+  const [guessedIds, setGuessedIds] = useState([]) // ISO_A3 codes guessed correctly
   const [feedback, setFeedback] = useState(null)
+  const [lastWrongId, setLastWrongId] = useState(null) // last clicked wrong id
   const [gameComplete, setGameComplete] = useState(false)
 
   // Use the custom hook to get real country data
   const { features: worldCountriesFeatures, isLoading: countriesLoading } = useWorldCountriesData()
-  // Initialize available countries based on selected region
-  useEffect(() => {
-    if (!worldCountriesFeatures.length) return // Wait for data to load
-    
-    const regionData = regions[selectedRegion]
-    let countries = []
-    
-    if (selectedRegion === 'World') {
-      countries = worldCountriesFeatures
-    } else {
-      countries = worldCountriesFeatures.filter(feature => 
-        regionData.countries.includes(feature.properties.NAME) ||
-        feature.properties.CONTINENT === selectedRegion ||
-        feature.properties.SUBREGION?.includes(selectedRegion)
-      )
-    }
-    
-    setAvailableCountries([...countries])
-  }, [selectedRegion, worldCountriesFeatures])
 
-  // Select a random country for the current question
+  // Select a new random country from the pool
   const selectRandomCountry = useCallback(() => {
     if (availableCountries.length === 0) {
       setGameComplete(true)
       setGameState('finished')
       return
     }
-    
-    const randomIndex = Math.floor(Math.random() * availableCountries.length)
-    const selectedCountry = availableCountries[randomIndex]
-    setCurrentCountry(selectedCountry)
-    
-    // Remove the selected country from available countries
-    setAvailableCountries(prev => prev.filter((_, index) => index !== randomIndex))
+    const idx = Math.floor(Math.random() * availableCountries.length)
+    const next = availableCountries[idx]
+    setCurrentCountry(next)
+    setAvailableCountries(prev => prev.filter((_, i) => i !== idx))
   }, [availableCountries])
-  // Start a new game
+
+  // Start or reset the game
   const startGame = () => {
-    if (!worldCountriesFeatures.length) {
-      console.warn('Cannot start game: country data not loaded yet')
+    if (!worldCountriesFeatures.length) return
+    // Filter by region
+    const regionData = regions[selectedRegion]
+    const pool = worldCountriesFeatures.filter(f =>
+      selectedRegion === 'World' ||
+      regionData.countries.includes(f.properties.NAME) ||
+      f.properties.CONTINENT === selectedRegion ||
+      f.properties.SUBREGION?.includes(selectedRegion)
+    )
+    if (!pool.length) {
+      setGameComplete(true)
+      setGameState('finished')
       return
     }
-      setGameState('playing')
+    // Initialize
+    setAvailableCountries(pool)
+    setGuessedIds([])
+    setLastWrongId(null)
     setScore(0)
     setTotalQuestions(0)
-    setGameComplete(false)
     setFeedback(null)
-    setCorrectlyGuessedCountries([]) // Reset correctly guessed countries
-    
-    // Reset available countries
-    const regionData = regions[selectedRegion]
-    let countries = []
-    
-    if (selectedRegion === 'World') {
-      countries = worldCountriesFeatures
-    } else {
-      countries = worldCountriesFeatures.filter(feature => 
-        regionData.countries.includes(feature.properties.NAME) ||
-        feature.properties.CONTINENT === selectedRegion ||
-        feature.properties.SUBREGION?.includes(selectedRegion)
-      )
-    }
-    
-    setAvailableCountries([...countries])
+    setGameComplete(false)
+    setGameState('playing')
+    // First question
+    // Use next tick
+    setTimeout(selectRandomCountry, 0)
   }
+
   // Handle country selection from map
-  const handleCountrySelect = (selectedFeature) => {
-    if (!currentCountry || gameState !== 'playing') return
-
+  const handleCountrySelect = (feature) => {
+    if (gameState !== 'playing' || !currentCountry) return
+    const selectedId = feature.properties.ISO_A3
+    const correctId = currentCountry.properties.ISO_A3
     setTotalQuestions(prev => prev + 1)
-    
-    console.log('Selected:', selectedFeature.properties.NAME, selectedFeature.properties.ISO_A3)
-    console.log('Target:', currentCountry.properties.NAME, currentCountry.properties.ISO_A3)
-    
-    const isCorrect = selectedFeature.properties.NAME === currentCountry.properties.NAME ||
-                     selectedFeature.properties.ISO_A3 === currentCountry.properties.ISO_A3
-
-    console.log('Is correct:', isCorrect)
-
-    if (isCorrect) {
+    if (selectedId === correctId) {
+      // Correct guess
       setScore(prev => prev + 1)
-      setCorrectlyGuessedCountries(prev => [...prev, currentCountry]) // Add to correctly guessed
-      setFeedback({
-        type: 'correct',
-        message: `Correct! That's ${currentCountry.properties.NAME}!`
-      })
-      
-      // Select next country after a short delay
+      setGuessedIds(prev => [...prev, correctId])
+      setFeedback({ type: 'correct', message: 'Correct!' })
       setTimeout(() => {
         setFeedback(null)
         selectRandomCountry()
-      }, 1500)
+      }, 1000)
     } else {
-      setFeedback({
-        type: 'incorrect',
-        message: `Incorrect. Try again! You selected ${selectedFeature.properties.NAME}`
-      })
-      
-      // Clear feedback after delay but don't move to next question
+      // Wrong guess
+      setLastWrongId(selectedId)
+      setFeedback({ type: 'incorrect', message: 'Incorrect. Try again.' })
       setTimeout(() => {
+        setLastWrongId(null)
         setFeedback(null)
-      }, 2000)
+      }, 1000)
     }
   }
 
-  // Start the first question when game begins
+  // Reset currentCountry when changing region or menu
   useEffect(() => {
-    if (gameState === 'playing' && availableCountries.length > 0 && !currentCountry) {
-      selectRandomCountry()
-    }
-  }, [gameState, availableCountries, currentCountry, selectRandomCountry])
-  // Handle region change
-  const handleRegionChange = (region) => {
-    setSelectedRegion(region)
-    if (gameState === 'playing') {
-      setGameState('menu')
+    if (gameState !== 'playing') {
       setCurrentCountry(null)
-      setCorrectlyGuessedCountries([]) // Reset correctly guessed when changing region
     }
-  }
+  }, [gameState, selectedRegion])
+
   // Calculate progress percentage
   const getProgress = () => {
     if (!worldCountriesFeatures.length) return 0
@@ -232,13 +191,13 @@ const GeographyQuiz = () => {
       )}
 
       {/* Map Container */}
-      <div className="map-container">        <WorldMap 
+      <div className="map-container">        <WorldMap
           selectedRegion={selectedRegion}
           onCountrySelect={handleCountrySelect}
-          currentCountry={currentCountry}
           gameState={gameState}
-          correctlyGuessedCountries={correctlyGuessedCountries}
-        />
+          guessedIds={guessedIds}
+          lastSelectedId={lastWrongId}
+         />
 
         {/* Game State Messages */}
         {gameState === 'menu' && (
