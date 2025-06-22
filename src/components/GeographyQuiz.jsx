@@ -11,6 +11,7 @@ const GeographyQuiz = () => {
   const [score, setScore] = useState(0)
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [availableCountries, setAvailableCountries] = useState([])
+  const [correctlyGuessedCountries, setCorrectlyGuessedCountries] = useState([])
   const [feedback, setFeedback] = useState(null)
   const [gameComplete, setGameComplete] = useState(false)
 
@@ -57,12 +58,12 @@ const GeographyQuiz = () => {
       console.warn('Cannot start game: country data not loaded yet')
       return
     }
-    
-    setGameState('playing')
+      setGameState('playing')
     setScore(0)
     setTotalQuestions(0)
     setGameComplete(false)
     setFeedback(null)
+    setCorrectlyGuessedCountries([]) // Reset correctly guessed countries
     
     // Reset available countries
     const regionData = regions[selectedRegion]
@@ -80,18 +81,23 @@ const GeographyQuiz = () => {
     
     setAvailableCountries([...countries])
   }
-
   // Handle country selection from map
   const handleCountrySelect = (selectedFeature) => {
     if (!currentCountry || gameState !== 'playing') return
 
     setTotalQuestions(prev => prev + 1)
     
+    console.log('Selected:', selectedFeature.properties.NAME, selectedFeature.properties.ISO_A3)
+    console.log('Target:', currentCountry.properties.NAME, currentCountry.properties.ISO_A3)
+    
     const isCorrect = selectedFeature.properties.NAME === currentCountry.properties.NAME ||
                      selectedFeature.properties.ISO_A3 === currentCountry.properties.ISO_A3
 
+    console.log('Is correct:', isCorrect)
+
     if (isCorrect) {
       setScore(prev => prev + 1)
+      setCorrectlyGuessedCountries(prev => [...prev, currentCountry]) // Add to correctly guessed
       setFeedback({
         type: 'correct',
         message: `Correct! That's ${currentCountry.properties.NAME}!`
@@ -121,13 +127,13 @@ const GeographyQuiz = () => {
       selectRandomCountry()
     }
   }, [gameState, availableCountries, currentCountry, selectRandomCountry])
-
   // Handle region change
   const handleRegionChange = (region) => {
     setSelectedRegion(region)
     if (gameState === 'playing') {
       setGameState('menu')
       setCurrentCountry(null)
+      setCorrectlyGuessedCountries([]) // Reset correctly guessed when changing region
     }
   }
   // Calculate progress percentage
@@ -226,12 +232,12 @@ const GeographyQuiz = () => {
       )}
 
       {/* Map Container */}
-      <div className="map-container">
-        <WorldMap 
+      <div className="map-container">        <WorldMap 
           selectedRegion={selectedRegion}
           onCountrySelect={handleCountrySelect}
           currentCountry={currentCountry}
           gameState={gameState}
+          correctlyGuessedCountries={correctlyGuessedCountries}
         />
 
         {/* Game State Messages */}

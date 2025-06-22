@@ -31,15 +31,17 @@ const MapViewController = ({ selectedRegion }) => {
   return null
 }
 
-const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState }) => {
+const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [] }) => {
   const geoJsonRef = useRef()
   const { countryData, isLoading } = useWorldCountriesData()
 
+  console.log('WorldMap render:', { gameState, selectedRegion, hasOnCountrySelect: !!onCountrySelect })
   // Style function for countries
   const getCountryStyle = (feature) => {
-    const isCurrentCountry = currentCountry && 
-      (feature.properties.NAME === currentCountry.properties.NAME ||
-       feature.properties.ISO_A3 === currentCountry.properties.ISO_A3)
+    const isCorrectlyGuessed = correctlyGuessedCountries.some(country => 
+      country.properties.NAME === feature.properties.NAME ||
+      country.properties.ISO_A3 === feature.properties.ISO_A3
+    )
     
     // Filter countries based on selected region
     const regionData = regions[selectedRegion]
@@ -59,17 +61,25 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState }
       }
     }
     
-    return {
-      fillColor: isCurrentCountry ? '#e74c3c' : '#3498db',
+    // Color logic: Green for correctly guessed, blue for unguessed (no special highlight for current target)
+    let fillColor = '#3498db' // Default blue
+    let borderColor = '#2980b9'
+    
+    if (isCorrectlyGuessed) {
+      fillColor = '#27ae60' // Green for correctly guessed
+      borderColor = '#229954'
+    }
+      return {
+      fillColor: fillColor,
       weight: 2,
       opacity: 1,
-      color: isCurrentCountry ? '#c0392b' : '#2980b9',
+      color: borderColor,
       dashArray: '',
       fillOpacity: 0.7,
-      interactive: gameState === 'playing'
+      interactive: gameState === 'playing' && isInRegion,
+      cursor: gameState === 'playing' && isInRegion ? 'pointer' : 'default'
     }
   }
-
   // Handle country interactions
   const onEachCountry = (feature, layer) => {
     const regionData = regions[selectedRegion]
@@ -77,13 +87,13 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState }
       regionData.countries.includes(feature.properties.NAME) ||
       feature.properties.CONTINENT === selectedRegion ||
       feature.properties.SUBREGION?.includes(selectedRegion)
-    
-    if (!isInRegion || gameState !== 'playing') {
-      return
-    }
+      console.log(`Setting up events for ${feature.properties.NAME}`)
 
+    // Always attach events, but check conditions inside the handlers
     layer.on({
       mouseover: (e) => {
+        if (!isInRegion || gameState !== 'playing') return
+        
         const layer = e.target
         layer.setStyle({
           weight: 3,
@@ -92,22 +102,20 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState }
           fillOpacity: 0.9
         })
         layer.bringToFront()
-        
-        // Show tooltip with country name
-        layer.bindTooltip(feature.properties.NAME, {
-          permanent: false,
-          direction: 'center',
-          className: 'country-tooltip'
-        }).openTooltip()
       },
       mouseout: (e) => {
+        if (!isInRegion || gameState !== 'playing') return
+        
         const layer = e.target
         layer.setStyle(getCountryStyle(feature))
-        layer.closeTooltip()
       },
       click: (e) => {
-        if (gameState === 'playing' && onCountrySelect) {
+        console.log(`Clicked on ${feature.properties.NAME}, gameState: ${gameState}, isInRegion: ${isInRegion}`)
+        if (isInRegion && gameState === 'playing' && onCountrySelect) {
+          console.log('Calling onCountrySelect')
           onCountrySelect(feature)
+        } else {
+          console.log('Click ignored - conditions not met')
         }
       }
     })
@@ -181,19 +189,17 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState }
         boxZoom={false}
         keyboard={true}
         attributionControl={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      >        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           maxZoom={10}
           minZoom={2}
-        />
-        <GeoJSON
+        />        <GeoJSON
           ref={geoJsonRef}
           data={countryData}
           style={getCountryStyle}
           onEachFeature={onEachCountry}
-          key={`${selectedRegion}-${gameState}-${currentCountry?.properties.NAME || 'none'}-${isLoading ? 'loading' : 'loaded'}`}
+          key={`${selectedRegion}-${gameState}-${correctlyGuessedCountries.length}-${isLoading ? 'loading' : 'loaded'}`}
         />
         
         <MapViewController selectedRegion={selectedRegion} />
