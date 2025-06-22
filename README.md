@@ -1,8 +1,8 @@
-# Geography Quiz - Interactive World Map Learning Game
+# GeoQuest - Interactive World Map Learning Game
 
 A modern, responsive React.js web application that helps users learn world geography through an interactive map-based quiz game. Built with Vite, React-Leaflet, and Natural Earth geographical data.
 
-![Geography Quiz Screenshot](public/screenshot.png)
+![GeoQuest Screenshot](public/screenshot.png)
 
 ## 🌍 Features
 

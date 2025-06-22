@@ -233,7 +233,7 @@ const GeographyQuiz = () => {
       {/* Header */}
       <header className="quiz-header">
         <div className="header-content">
-          <h1 className="app-title">Geography Quiz</h1>
+          <h1 className="app-title">GeoQuest</h1>
           
           <div className="game-info">
             <div className="game-controls">
@@ -317,7 +317,7 @@ const GeographyQuiz = () => {
         {/* Game State Messages */}
         {gameState === 'menu' && (
           <div className="game-message">
-            <h2 className="message-title">Welcome to Geography Quiz!</h2>
+            <h2 className="message-title">Welcome to GeoQuest!</h2>
             <p className="message-content">
               Test your geography knowledge by finding countries on the world map. 
               Select a region below and start your quiz!
