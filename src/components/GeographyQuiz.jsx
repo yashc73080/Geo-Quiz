@@ -101,6 +101,7 @@ const GeographyQuiz = () => {
   }, [availableCountries])
 
   // Handle country selection from map - using refs to avoid stale closure
+    // Handle country selection from map - using refs to avoid stale closure
   const handleCountrySelect = useCallback((selectedFeature) => {
     console.log('handleCountrySelect called with:', selectedFeature.properties.NAME)
     console.log('Current state - currentCountry from ref:', currentCountryRef.current?.properties?.NAME, 'gameState from ref:', gameStateRef.current)
@@ -119,17 +120,33 @@ const GeographyQuiz = () => {
     console.log('Selected:', selectedFeature.properties.NAME, selectedFeature.properties.ISO_A3)
     console.log('Target:', currentCountryRef.current.properties.NAME, currentCountryRef.current.properties.ISO_A3)
     
-    const isCorrect = selectedFeature.properties.NAME === currentCountryRef.current.properties.NAME ||
-                    selectedFeature.properties.ISO_A3 === currentCountryRef.current.properties.ISO_A3
-
-    console.log('Is correct:', isCorrect)
+    // Fix the comparison logic - only use ISO if both countries have valid ISO codes
+    const selectedName = selectedFeature.properties.NAME
+    const selectedISO = selectedFeature.properties.ISO_A3
+    const targetName = currentCountryRef.current.properties.NAME
+    const targetISO = currentCountryRef.current.properties.ISO_A3
+    
+    const isCorrectByName = selectedName === targetName
+    // Only compare ISO codes if both are non-empty and valid
+    const isCorrectByISO = selectedISO && targetISO && selectedISO !== '' && targetISO !== '' && selectedISO === targetISO
+    const isCorrect = isCorrectByName || isCorrectByISO
+    
+    console.log('Comparison details:', {
+      selectedName,
+      selectedISO,
+      targetName,
+      targetISO,
+      isCorrectByName,
+      isCorrectByISO,
+      finalResult: isCorrect
+    })
 
     if (isCorrect) {
       setScore(prev => prev + 1)
       setCorrectlyGuessedCountries(prev => [...prev, currentCountryRef.current])
       setFeedback({
         type: 'correct',
-        message: `Correct! That's ${currentCountryRef.current.properties.NAME}!`
+        message: `Correct! That's ${targetName}!`
       })
       
       // Select next country after a short delay
@@ -140,7 +157,8 @@ const GeographyQuiz = () => {
     } else {
       setFeedback({
         type: 'incorrect',
-        message: `Incorrect. That's ${selectedFeature.properties.NAME}. Try again! Looking for ${currentCountryRef.current.properties.NAME}.`
+        message: `Incorrect. That's ${selectedName}.`,
+        selectedCountry: selectedFeature // Pass the selected country for visual feedback
       })
       
       // Clear feedback after delay but don't move to next question

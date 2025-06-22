@@ -133,14 +133,6 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         console.log(`Clicked on ${feature.properties.NAME}, gameState: ${gameState}, isInRegion: ${isInRegion}`)
         if (isInRegion && gameState === 'playing' && onCountrySelect) {
           console.log('Calling onCountrySelect')
-          
-          // Set incorrect country for visual feedback
-          if (feedback?.type === 'incorrect') {
-            setIncorrectCountry(feature)
-            // Clear after 2 seconds
-            setTimeout(() => setIncorrectCountry(null), 2000)
-          }
-          
           onCountrySelect(feature)
         } else {
           console.log('Click ignored - conditions not met')
@@ -157,7 +149,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
       }
     })
 
-    // Make layer focusable
+    // Make layer focusable for accessibility
     if (layer.getElement) {
       const element = layer.getElement()
       if (element) {
@@ -166,7 +158,23 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         element.setAttribute('aria-label', `Select ${feature.properties.NAME}`)
       }
     }
-  }, [selectedRegion, gameState, onCountrySelect, getCountryStyle, feedback])
+  }, [selectedRegion, gameState, onCountrySelect, getCountryStyle])
+
+  // Effect to handle incorrect country highlighting
+  useEffect(() => {
+    if (feedback?.type === 'incorrect' && feedback.selectedCountry) {
+      setIncorrectCountry(feedback.selectedCountry)
+      
+      // Clear the incorrect highlight after the feedback clears
+      const timer = setTimeout(() => {
+        setIncorrectCountry(null)
+      }, 2000)
+      
+      return () => clearTimeout(timer)
+    } else {
+      setIncorrectCountry(null)
+    }
+  }, [feedback])
 
   // Get initial map bounds
   const getInitialBounds = () => {
