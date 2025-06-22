@@ -31,7 +31,7 @@ const MapViewController = ({ selectedRegion }) => {
   return null
 }
 
-const WorldMap = ({ selectedRegion, onCountrySelect, gameState, correctlyGuessedCountries = [], lastIncorrectId }) => {
+const WorldMap = ({ selectedRegion, onCountrySelect, gameState, guessedIds = [], lastSelectedId }) => {
    const { countryData, isLoading } = useWorldCountriesData()
 
    // Style function for countries based on props
@@ -48,14 +48,14 @@ const WorldMap = ({ selectedRegion, onCountrySelect, gameState, correctlyGuessed
      }
 
      // Wrong guess highlight
-     if (id === lastIncorrectId) {
-       return { fillColor: '#e74c3c', color: '#c0392b', weight: 3, fillOpacity: 0.9 }
-     }
+    if (id === lastSelectedId) {
+      return { fillColor: '#e74c3c', color: '#c0392b', weight: 3, fillOpacity: 0.9 }
+    }
 
-     // Correctly guessed countries
-     if (correctlyGuessedCountries.some(c => c.properties.ISO_A3 === id)) {
-       return { fillColor: '#27ae60', color: '#229954', weight: 2, fillOpacity: 0.7 }
-     }
+    // Correctly guessed countries
+    if (guessedIds.includes(id)) {
+      return { fillColor: '#27ae60', color: '#229954', weight: 2, fillOpacity: 0.7 }
+    }
 
      // Default style for others
      return { fillColor: '#3498db', color: '#2980b9', weight: 2, fillOpacity: 0.7, interactive: gameState === 'playing' && inRegion, cursor: gameState === 'playing' && inRegion ? 'pointer' : 'default' }
@@ -160,8 +160,8 @@ const WorldMap = ({ selectedRegion, onCountrySelect, gameState, correctlyGuessed
          data={countryData}
          style={getCountryStyle}
          onEachFeature={onEachCountry}
-         key={`${selectedRegion}-${gameState}-${correctlyGuessedCountries.length}-${lastIncorrectId || 'none'}`}
-       />
+        key={`${selectedRegion}-${gameState}-${guessedIds.length}-${lastSelectedId || 'none'}`}
+      />
         
         <MapViewController selectedRegion={selectedRegion} />
       </MapContainer>

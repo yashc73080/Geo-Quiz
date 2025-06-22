@@ -16,6 +16,19 @@ const GeographyQuiz = () => {
   const [lastWrongId, setLastWrongId] = useState(null) // last clicked wrong id
   const [gameComplete, setGameComplete] = useState(false)
 
+  // Change region and reset the game state
+  const handleRegionChange = (region) => {
+    setSelectedRegion(region)
+    setGameState('menu')
+    setCurrentCountry(null)
+    setAvailableCountries([])
+    setGuessedIds([])
+    setLastWrongId(null)
+    setScore(0)
+    setTotalQuestions(0)
+    setFeedback(null)
+  }
+
   // Use the custom hook to get real country data
   const { features: worldCountriesFeatures, isLoading: countriesLoading } = useWorldCountriesData()
 
