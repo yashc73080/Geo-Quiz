@@ -16,24 +16,30 @@ L.Icon.Default.mergeOptions({
 })
 
 // Component to handle map view changes
-const MapViewController = ({ selectedRegion }) => {
+const MapViewController = ({ selectedRegions }) => {
   const map = useMap()
   
   useEffect(() => {
-    const regionData = regions[selectedRegion]
-    if (regionData && regionData.bounds) {
-      const bounds = L.latLngBounds(
-        [regionData.bounds[0][1], regionData.bounds[0][0]], // southwest
-        [regionData.bounds[1][1], regionData.bounds[1][0]]  // northeast
-      )
-      map.fitBounds(bounds, { padding: [20, 20] })
+    // If World is selected or multiple regions, show world view
+    if (selectedRegions.includes('World') || selectedRegions.length > 1) {
+      map.setView([20, 0], 2)
+    } else if (selectedRegions.length === 1) {
+      // If only one region is selected, zoom to that region
+      const regionData = regions[selectedRegions[0]]
+      if (regionData && regionData.bounds) {
+        const bounds = L.latLngBounds(
+          [regionData.bounds[0][1], regionData.bounds[0][0]], // southwest
+          [regionData.bounds[1][1], regionData.bounds[1][0]]  // northeast
+        )
+        map.fitBounds(bounds, { padding: [20, 20] })
+      }
     }
-  }, [selectedRegion, map])
+  }, [selectedRegions, map])
   
   return null
 }
 
-const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [], feedback, incorrectAttempts = 0 }) => {
+const WorldMap = ({ selectedRegions, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [], feedback, incorrectAttempts = 0 }) => {
   const geoJsonRef = useRef()
   const [incorrectCountry, setIncorrectCountry] = useState(null)
   // Use enhanced hook with dynamic resolution changing
@@ -45,28 +51,31 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
     changeResolution 
   } = useWorldCountriesDataWithResolution()
 
+  // Helper function to check if a country is in any of the selected regions
+  const isCountryInSelectedRegions = useCallback((countryName) => {
+    if (selectedRegions.includes('World')) {
+      return true
+    }
+    
+    const continent = getContinent(countryName)
+    return selectedRegions.some(regionName => {
+      const regionData = regions[regionName]
+      return regionData && regionData.continent === continent
+    })
+  }, [selectedRegions])
+
   // Clear incorrect country highlight when feedback changes
   useEffect(() => {
     if (!feedback || feedback.type !== 'incorrect') {
       setIncorrectCountry(null)
     }
   }, [feedback])
-
   // Style function for countries
   const getCountryStyle = useCallback((feature) => {
     const countryName = feature.properties.name || feature.properties.NAME
     
-    // Check if country is in the selected region using the continent mapping
-    let isInRegion = false
-    if (selectedRegion === 'World') {
-      isInRegion = true
-    } else {
-      const regionData = regions[selectedRegion]
-      if (regionData && regionData.continent) {
-        const continent = getContinent(countryName)
-        isInRegion = continent === regionData.continent
-      }
-    }
+    // Check if country is in any of the selected regions
+    const isInRegion = isCountryInSelectedRegions(countryName)
     
     const isCorrectlyGuessed = correctlyGuessedCountries.some(
       country => {
@@ -136,23 +145,13 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
       dashArray: '',
       fillOpacity: 0.7
     }
-  }, [selectedRegion, correctlyGuessedCountries, incorrectCountry, currentCountry, incorrectAttempts, gameState])
-
+  }, [selectedRegions, correctlyGuessedCountries, incorrectCountry, currentCountry, incorrectAttempts, gameState, isCountryInSelectedRegions])
   // Handle country interactions - wrapped in useCallback to prevent recreation
   const onEachCountry = useCallback((feature, layer) => {
     const countryName = feature.properties.name || feature.properties.NAME
     
-    // Check if country is in the selected region using the continent mapping
-    let isInRegion = false
-    if (selectedRegion === 'World') {
-      isInRegion = true
-    } else {
-      const regionData = regions[selectedRegion]
-      if (regionData && regionData.continent) {
-        const continent = getContinent(countryName)
-        isInRegion = continent === regionData.continent
-      }
-    }
+    // Check if country is in any of the selected regions
+    const isInRegion = isCountryInSelectedRegions(countryName)
       
     // Always attach events, but check conditions inside the handlers
     layer.on({
@@ -214,7 +213,7 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
         element.setAttribute('aria-label', `Select ${countryName}`)
       }
     }
-  }, [selectedRegion, gameState, onCountrySelect, getCountryStyle, incorrectCountry, currentCountry, incorrectAttempts])
+  }, [selectedRegions, gameState, onCountrySelect, getCountryStyle, incorrectCountry, currentCountry, incorrectAttempts, isCountryInSelectedRegions])
 
   // Effect to handle incorrect country highlighting
   useEffect(() => {
@@ -231,17 +230,22 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
       setIncorrectCountry(null)
     }
   }, [feedback])
-
   // Get initial map bounds
   const getInitialBounds = () => {
-    const regionData = regions[selectedRegion]
-    if (regionData && regionData.bounds) {
-      return [
-        [regionData.bounds[0][1], regionData.bounds[0][0]], // southwest
-        [regionData.bounds[1][1], regionData.bounds[1][0]]  // northeast
-      ]
+    // If World is selected or multiple regions, use world bounds
+    if (selectedRegions.includes('World') || selectedRegions.length > 1) {
+      return [[-90, -180], [90, 180]]
+    } else if (selectedRegions.length === 1) {
+      // If only one region, use that region's bounds
+      const regionData = regions[selectedRegions[0]]
+      if (regionData && regionData.bounds) {
+        return [
+          [regionData.bounds[0][1], regionData.bounds[0][0]], // southwest
+          [regionData.bounds[1][1], regionData.bounds[1][0]]  // northeast
+        ]
+      }
     }
-    return [[-90, -180], [90, 180]] // World bounds
+    return [[-90, -180], [90, 180]] // Default world bounds
   }
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
@@ -320,10 +324,10 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
           precision={6} // Higher precision for better accuracy
           smoothFactor={0.5} // Lower smoothing for more detailed edges
           tolerance={0} // No tolerance for maximum detail
-          key={`${selectedRegion}-${gameState}-${correctlyGuessedCountries.length}-${incorrectAttempts}-${currentResolution}-${loadedResolution}-${isLoading ? 'loading' : 'loaded'}`}
+          key={`${selectedRegions.join('-')}-${gameState}-${correctlyGuessedCountries.length}-${incorrectAttempts}-${currentResolution}-${loadedResolution}-${isLoading ? 'loading' : 'loaded'}`}
         />
         
-        <MapViewController selectedRegion={selectedRegion} />
+        <MapViewController selectedRegions={selectedRegions} />
       </MapContainer>
     </div>
   )

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { MapPin, Trophy, Target, RotateCcw, Play, ChevronDown } from 'lucide-react'
+import { MapPin, Trophy, Target, RotateCcw, Play, ChevronDown, Settings } from 'lucide-react'
 import WorldMap from './WorldMap'
 import { regions, getCountriesForRegion } from '../data/countriesData'
 import { useWorldCountriesData } from '../hooks/useWorldCountriesData'
 
 const GeographyQuiz = () => {
   const [gameState, setGameState] = useState('menu') // 'menu', 'playing', 'finished'
-  const [selectedRegion, setSelectedRegion] = useState('World')
+  const [selectedRegions, setSelectedRegions] = useState(['World'])
   const [currentCountry, setCurrentCountry] = useState(null)
   const [score, setScore] = useState(0)
   const [totalQuestions, setTotalQuestions] = useState(0)
@@ -15,11 +15,12 @@ const GeographyQuiz = () => {
   const [feedback, setFeedback] = useState(null)
   const [gameComplete, setGameComplete] = useState(false)
   const [incorrectAttempts, setIncorrectAttempts] = useState(0)
-
+  const [isRegionDropdownOpen, setIsRegionDropdownOpen] = useState(false)
   // Use ref to maintain current country for click handler
   const currentCountryRef = useRef(null)
   const gameStateRef = useRef('menu')
   const availableCountriesRef = useRef([])
+  const regionDropdownRef = useRef(null)
 
   // Update refs when state changes
   useEffect(() => {
@@ -29,14 +30,44 @@ const GeographyQuiz = () => {
   useEffect(() => {
     gameStateRef.current = gameState
   }, [gameState])
-
   useEffect(() => {
     availableCountriesRef.current = availableCountries
   }, [availableCountries])
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (regionDropdownRef.current && !regionDropdownRef.current.contains(event.target)) {
+        setIsRegionDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
   // Use the custom hook to get real country data
   const { features: worldCountriesFeatures, isLoading: countriesLoading } = useWorldCountriesData()
 
+  // Helper function to get countries for multiple regions
+  const getCountriesForMultipleRegions = useCallback((regionNames, allCountries) => {
+    if (regionNames.includes('World')) {
+      return allCountries
+    }
+    
+    const allRegionCountries = new Set()
+    
+    regionNames.forEach(regionName => {
+      const regionCountries = getCountriesForRegion(regionName, allCountries)
+      regionCountries.forEach(country => {
+        const countryId = country.properties.ISO_A3 || country.properties.name || country.properties.NAME
+        allRegionCountries.add(JSON.stringify(country))
+      })
+    })
+    
+    return Array.from(allRegionCountries).map(countryStr => JSON.parse(countryStr))
+  }, [])
   // Start game function
   const startGame = useCallback(() => {
     setGameState('playing')
@@ -48,24 +79,23 @@ const GeographyQuiz = () => {
     setGameComplete(false)
     setIncorrectAttempts(0)
     
-    // Reset available countries for the selected region
+    // Reset available countries for the selected regions
     if (worldCountriesFeatures.length > 0) {
-      const countries = getCountriesForRegion(selectedRegion, worldCountriesFeatures)
+      const countries = getCountriesForMultipleRegions(selectedRegions, worldCountriesFeatures)
       
-      console.log(`Starting game with ${countries.length} countries for ${selectedRegion}`)
+      console.log(`Starting game with ${countries.length} countries for ${selectedRegions.join(', ')}`)
       setAvailableCountries([...countries])
     }
-  }, [selectedRegion, worldCountriesFeatures])
-
-  // Initialize available countries based on selected region
+  }, [selectedRegions, worldCountriesFeatures])
+  // Initialize available countries based on selected regions
   useEffect(() => {
     if (!worldCountriesFeatures.length) return // Wait for data to load
     
-    const countries = getCountriesForRegion(selectedRegion, worldCountriesFeatures)
+    const countries = getCountriesForMultipleRegions(selectedRegions, worldCountriesFeatures)
     
-    console.log(`Filtered countries for ${selectedRegion}:`, countries.map(c => c.properties.name || c.properties.NAME))
+    console.log(`Filtered countries for ${selectedRegions.join(', ')}:`, countries.map(c => c.properties.name || c.properties.NAME))
     setAvailableCountries([...countries])
-  }, [selectedRegion, worldCountriesFeatures])
+  }, [selectedRegions, worldCountriesFeatures, getCountriesForMultipleRegions])
 
   // Select a random country for the current question
   const selectRandomCountry = useCallback(() => {
@@ -198,23 +228,55 @@ const GeographyQuiz = () => {
       console.log('Starting first question')
       selectRandomCountry()
     }
-  }, [gameState, availableCountries, currentCountry, selectRandomCountry])
-
-  // Handle region change
-  const handleRegionChange = (region) => {
-    setSelectedRegion(region)
+  }, [gameState, availableCountries, currentCountry, selectRandomCountry])  // Handle region change
+  const handleRegionChange = (region, checked) => {
+    setSelectedRegions(prev => {
+      let newSelectedRegions
+      
+      if (region === 'World') {
+        // If World is selected, clear all other selections
+        newSelectedRegions = checked ? ['World'] : []
+      } else {
+        // If another region is selected/deselected
+        if (checked) {
+          // Remove 'World' if it was selected and add the new region
+          newSelectedRegions = prev.filter(r => r !== 'World').concat(region)
+        } else {
+          // Remove the region
+          newSelectedRegions = prev.filter(r => r !== region)
+        }
+      }
+      
+      // If no regions are selected, default to World
+      if (newSelectedRegions.length === 0) {
+        newSelectedRegions = ['World']
+      }
+      
+      return newSelectedRegions
+    })
+    
     if (gameState === 'playing') {
-      setGameState('menu')
+      // If playing, reset the current country and correctly guessed countries
+      // but don't go back to menu - just restart with new regions
       setCurrentCountry(null)
-      setCorrectlyGuessedCountries([]) // Reset correctly guessed when changing region
+      setCorrectlyGuessedCountries([])
+      setScore(0)
+      setTotalQuestions(0)
+      setIncorrectAttempts(0)
+      setFeedback(null)
     }
+    
+    // Optional: Close dropdown after a short delay when making selections
+    // Uncomment the next two lines if you want auto-close behavior
+    // setTimeout(() => {
+    //   setIsRegionDropdownOpen(false)
+    // }, 1000)
   }
-
   // Calculate progress percentage
   const getProgress = () => {
     if (!worldCountriesFeatures.length) return 0
     
-    const totalCountries = getCountriesForRegion(selectedRegion, worldCountriesFeatures).length
+    const totalCountries = getCountriesForMultipleRegions(selectedRegions, worldCountriesFeatures).length
     const completed = totalCountries - availableCountries.length
     return totalCountries > 0 ? (completed / totalCountries) * 100 : 0
   }
@@ -230,29 +292,13 @@ const GeographyQuiz = () => {
   }, [currentCountry])
 
   return (
-    <div className="geography-quiz">
-      {/* Header */}
+    <div className="geography-quiz">      {/* Header */}
       <header className="quiz-header">
         <div className="header-content">
           <h1 className="app-title">GeoQuest</h1>
           
-          <div className="game-info">            <div className="game-controls">
-              <div className="region-selector-wrapper">
-                <select 
-                  className="region-selector"
-                  value={selectedRegion}
-                  onChange={(e) => handleRegionChange(e.target.value)}
-                  aria-label="Select region for geography quiz"
-                >
-                  {Object.keys(regions).map(region => (
-                    <option key={region} value={region}>
-                      {regions[region].name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="region-selector-icon" aria-hidden="true" />
-              </div>
-              
+          <div className="game-info">
+            <div className="game-controls">
               {gameState === 'playing' && (
                 <button 
                   className="btn btn-secondary"
@@ -313,12 +359,50 @@ const GeographyQuiz = () => {
             </p>
           )}
         </div>
-      )}
-
-      {/* Map Container */}
+      )}      {/* Map Container */}
       <div className="map-container">
-        <WorldMap 
-          selectedRegion={selectedRegion}
+        {/* Region Selector - Show on menu and playing screens */}
+        {(gameState === 'menu' || gameState === 'playing') && (
+          <div className="menu-region-selector" ref={regionDropdownRef}>
+            <button 
+              className="region-dropdown-toggle"
+              onClick={() => setIsRegionDropdownOpen(!isRegionDropdownOpen)}
+              aria-expanded={isRegionDropdownOpen}
+              aria-label="Select regions for geography quiz"
+            >
+              <Settings size={16} aria-hidden="true" />
+              <span className="dropdown-text">
+                Regions ({selectedRegions.length})
+              </span>
+              <ChevronDown 
+                size={16} 
+                className={`dropdown-arrow ${isRegionDropdownOpen ? 'open' : ''}`} 
+                aria-hidden="true" 
+              />
+            </button>
+            
+            {isRegionDropdownOpen && (
+              <div className="region-checkboxes-dropdown">
+                <h3 className="region-title">Select Regions:</h3>
+                {Object.keys(regions).map(region => (
+                  <label key={region} className="region-checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="region-checkbox"
+                      checked={selectedRegions.includes(region)}
+                      onChange={(e) => handleRegionChange(region, e.target.checked)}
+                      aria-label={`Include ${regions[region].name} in quiz`}
+                    />
+                    <span className="checkbox-text">{regions[region].name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <WorldMap
+          selectedRegions={selectedRegions}
           onCountrySelect={handleCountrySelect}
           currentCountry={currentCountry}
           gameState={gameState}
@@ -334,9 +418,8 @@ const GeographyQuiz = () => {
             <p className="message-content">
               Test your geography knowledge by finding countries on the world map. 
               Select a region below and start your quiz!
-            </p>
-            <p className="message-content">
-              <strong>Region:</strong> {regions[selectedRegion].name}
+            </p>            <p className="message-content">
+              <strong>Selected Regions:</strong> {selectedRegions.map(region => regions[region].name).join(', ')}
             </p>
             <div className="action-buttons">
               <button 
@@ -354,9 +437,8 @@ const GeographyQuiz = () => {
 
         {gameState === 'finished' && (
           <div className="game-message" role="main">
-            <h2 className="message-title">Quiz Complete!</h2>
-            <p className="message-content">
-              Congratulations! You've completed the {regions[selectedRegion].name} quiz.
+            <h2 className="message-title">Quiz Complete!</h2>            <p className="message-content">
+              Congratulations! You've completed the quiz for {selectedRegions.map(region => regions[region].name).join(', ')}.
             </p>
             <p className="message-content">
               <strong>Final Score:</strong> {score} out of {totalQuestions} ({Math.round((score / Math.max(totalQuestions, 1)) * 100)}%)
