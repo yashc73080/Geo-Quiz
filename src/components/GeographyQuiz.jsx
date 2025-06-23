@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { MapPin, Trophy, Target, RotateCcw, Play } from 'lucide-react'
+import { MapPin, Trophy, Target, RotateCcw, Play, ChevronDown } from 'lucide-react'
 import WorldMap from './WorldMap'
 import { regions, getCountriesForRegion } from '../data/countriesData'
 import { useWorldCountriesData } from '../hooks/useWorldCountriesData'
@@ -236,20 +236,22 @@ const GeographyQuiz = () => {
         <div className="header-content">
           <h1 className="app-title">GeoQuest</h1>
           
-          <div className="game-info">
-            <div className="game-controls">
-              <select 
-                className="region-selector"
-                value={selectedRegion}
-                onChange={(e) => handleRegionChange(e.target.value)}
-                aria-label="Select region for geography quiz"
-              >
-                {Object.keys(regions).map(region => (
-                  <option key={region} value={region}>
-                    {regions[region].name}
-                  </option>
-                ))}
-              </select>
+          <div className="game-info">            <div className="game-controls">
+              <div className="region-selector-wrapper">
+                <select 
+                  className="region-selector"
+                  value={selectedRegion}
+                  onChange={(e) => handleRegionChange(e.target.value)}
+                  aria-label="Select region for geography quiz"
+                >
+                  {Object.keys(regions).map(region => (
+                    <option key={region} value={region}>
+                      {regions[region].name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="region-selector-icon" aria-hidden="true" />
+              </div>
               
               {gameState === 'playing' && (
                 <button 
@@ -266,45 +268,50 @@ const GeographyQuiz = () => {
               )}
             </div>
             
-            {gameState === 'playing' && (
-              <div className="score-display" role="status" aria-live="polite">
+            {gameState === 'playing' && (              <div className="score-display" role="status" aria-live="polite">
                 <div className="score-item">
-                  <Trophy size={16} aria-hidden="true" />
+                  <Trophy size={18} color="#FFD700" fill="#FFF" aria-hidden="true" />
                   <span aria-label={`Score: ${score} out of ${totalQuestions}`}>
                     Score: {score}/{totalQuestions}
                   </span>
-                </div>
-                <div className="score-item">
-                  <Target size={16} aria-hidden="true" />
+                </div>                <div className="score-item">
+                  <Target size={16} color="#3498db" aria-hidden="true" />
                   <span aria-label={`Accuracy: ${Math.round((score / Math.max(totalQuestions, 1)) * 100)} percent`}>
                     {Math.round((score / Math.max(totalQuestions, 1)) * 100)}% Accuracy
                   </span>
-                </div>
-                <div className="score-item">
+                </div><div className="score-item">
                   <div className="progress-container" role="progressbar" aria-valuenow={getProgress()} aria-valuemin="0" aria-valuemax="100">
                     <div 
                       className="progress-bar" 
                       style={{ width: `${getProgress()}%` }}
                       aria-hidden="true"
                     ></div>
-                    <div className="progress-text">
-                      {Math.round(getProgress())}% Complete
-                    </div>
                   </div>
+                  <span className="progress-text">
+                    {Math.round(getProgress())}%
+                  </span>
                 </div>
               </div>
             )}
           </div>
         </div>
-      </header>
-
-      {/* Current Question */}
+      </header>      {/* Current Question */}
       {gameState === 'playing' && currentCountry && (
         <div className="current-question" role="main">
           <p className="question-text">
             <MapPin size={24} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} aria-hidden="true" />
             Find: <strong>{currentCountry.properties.NAME || currentCountry.properties.name}</strong>
           </p>
+          {incorrectAttempts >= 3 && (
+            <p className="hint-text" style={{
+              fontSize: '1rem',
+              marginTop: '0.5rem',
+              opacity: 0.9,
+              fontWeight: 400
+            }}>
+              💡 The target country is highlighted in yellow on the map
+            </p>
+          )}
         </div>
       )}
 
