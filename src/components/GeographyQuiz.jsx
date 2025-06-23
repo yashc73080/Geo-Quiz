@@ -376,7 +376,7 @@ const GeographyQuiz = () => {
 
         {/* Feedback Messages */}
         {feedback && (
-          <div className={`feedback-message feedback-${feedback.type}`} role="alert" aria-live="assertive">
+          <div className={`feedback-message feedback-${feedback.type} feedback-top-right`} role="alert" aria-live="assertive">
             {feedback.message}
           </div>
         )}
