@@ -319,10 +319,42 @@ html, body {
   font-size: 1.5rem;
   font-weight: 600;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: relative;
 }
 
 .question-text {
   margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hint-bubble {
+  background: rgba(255, 255, 255, 0.95);
+  color: #2c3e50;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  margin-left: 1rem;
+  animation: hintFadeIn 0.5s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+@keyframes hintFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Map Container */
@@ -561,6 +593,17 @@ html, body {
     padding: 0.75rem;
   }
   
+  .question-text {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .hint-bubble {
+    margin-left: 0;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+  }
+  
   .game-message {
     padding: 1.5rem;
     margin: 1rem;
@@ -612,6 +655,11 @@ html, body {
   .current-question {
     font-size: 1rem;
     padding: 0.5rem;
+  }
+  
+  .hint-bubble {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
   }
   
   .menu-region-selector {

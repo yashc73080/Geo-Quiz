@@ -347,19 +347,14 @@ const GeographyQuiz = () => {
           <p className="question-text">
             <MapPin size={24} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} aria-hidden="true" />
             Find: <strong>{currentCountry.properties.NAME || currentCountry.properties.name}</strong>
+            {incorrectAttempts >= 3 && (
+              <span className="hint-bubble">
+                💡 Highlighted in yellow
+              </span>
+            )}
           </p>
-          {incorrectAttempts >= 3 && (
-            <p className="hint-text" style={{
-              fontSize: '1rem',
-              marginTop: '0.5rem',
-              opacity: 0.9,
-              fontWeight: 400
-            }}>
-              💡 The target country is highlighted in yellow on the map
-            </p>
-          )}
         </div>
-      )}      {/* Map Container */}
+      )}{/* Map Container */}
       <div className="map-container">
         {/* Region Selector - Show on menu and playing screens */}
         {(gameState === 'menu' || gameState === 'playing') && (
