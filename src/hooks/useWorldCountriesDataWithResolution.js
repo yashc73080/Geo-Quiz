@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { realWorldCountriesData } from '../data/worldCountriesGeoJSON'
 import { getContinent, getRegionUN, getSubregion } from '../data/worldCountriesGeoJSON'
 
@@ -7,7 +7,7 @@ const GEO_DATA_SOURCES = {
   // Very high resolution - best detail but larger file size
   HIGH_RES: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
   
-  // Medium resolution - good balance of detail and performance
+  // Medium resolution - good balance of detail and performance  
   MEDIUM_RES: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson',
   
   // Alternative high-quality source
@@ -20,14 +20,15 @@ const GEO_DATA_SOURCES = {
 // Cache for storing loaded data
 const dataCache = new Map()
 
-// Custom hook to manage world countries data with improved resolution
-export const useWorldCountriesData = (resolution = 'HIGH_RES') => {
+// Enhanced hook with dynamic resolution changing capability
+export const useWorldCountriesDataWithResolution = () => {
   const [countryData, setCountryData] = useState(realWorldCountriesData)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [loadedResolution, setLoadedResolution] = useState('FALLBACK')
+  const [currentResolution, setCurrentResolution] = useState('HIGH_RES')
+  const [loadedResolution, setLoadedResolution] = useState('BUILT_IN_FALLBACK')
 
-  const fetchHighResolutionData = async (sourceUrl, sourceName) => {
+  const fetchHighResolutionData = useCallback(async (sourceUrl, sourceName) => {
     // Check cache first
     const cacheKey = `${sourceName}_${sourceUrl}`
     if (dataCache.has(cacheKey)) {
@@ -83,60 +84,73 @@ export const useWorldCountriesData = (resolution = 'HIGH_RES') => {
     console.log(`✅ Successfully loaded and cached ${transformedData.features.length} countries from ${sourceName}`)
     
     return transformedData
-  }
+  }, [])
 
-  useEffect(() => {
-    const loadHighResolutionCountryData = async () => {
-      setIsLoading(true)
-      setError(null)
-      
-      const sources = [
-        { url: GEO_DATA_SOURCES[resolution], name: resolution },
-        { url: GEO_DATA_SOURCES.MEDIUM_RES, name: 'MEDIUM_RES' },
-        { url: GEO_DATA_SOURCES.ALTERNATIVE, name: 'ALTERNATIVE' },
-        { url: GEO_DATA_SOURCES.FALLBACK, name: 'FALLBACK' }
-      ]
+  const loadCountryData = useCallback(async (resolution) => {
+    setIsLoading(true)
+    setError(null)
+    
+    const sources = [
+      { url: GEO_DATA_SOURCES[resolution], name: resolution },
+      { url: GEO_DATA_SOURCES.MEDIUM_RES, name: 'MEDIUM_RES' },
+      { url: GEO_DATA_SOURCES.ALTERNATIVE, name: 'ALTERNATIVE' },
+      { url: GEO_DATA_SOURCES.FALLBACK, name: 'FALLBACK' }
+    ]
 
-      // Try each source in order until one succeeds
-      for (const source of sources) {
-        try {
-          console.log(`🔄 Attempting to load ${source.name} resolution data...`)
-          const data = await fetchHighResolutionData(source.url, source.name)
-          
-          setCountryData(data)
-          setLoadedResolution(source.name)
-          setError(null)
-          console.log(`✅ Successfully loaded ${source.name} resolution country polygons!`)
-          console.log(`📊 Total countries loaded: ${data.features.length}`)
-          
-          // Log some sample countries for debugging
-          const sampleCountries = data.features.slice(0, 3).map(f => f.properties.name)
-          console.log(`🏳️ Sample countries: ${sampleCountries.join(', ')}`)
-          
-          setIsLoading(false)
-          return // Success - exit the loop
-          
-        } catch (err) {
-          console.warn(`⚠️ Failed to load ${source.name} data:`, err.message)
-          setError(err)
-          // Continue to next source
-        }
+    // Try each source in order until one succeeds
+    for (const source of sources) {
+      try {
+        console.log(`🔄 Attempting to load ${source.name} resolution data...`)
+        const data = await fetchHighResolutionData(source.url, source.name)
+        
+        setCountryData(data)
+        setLoadedResolution(source.name)
+        setError(null)
+        console.log(`✅ Successfully loaded ${source.name} resolution country polygons!`)
+        console.log(`📊 Total countries loaded: ${data.features.length}`)
+        
+        // Log some sample countries for debugging
+        const sampleCountries = data.features.slice(0, 3).map(f => f.properties.name)
+        console.log(`🏳️ Sample countries: ${sampleCountries.join(', ')}`)
+        
+        setIsLoading(false)
+        return // Success - exit the loop
+        
+      } catch (err) {
+        console.warn(`⚠️ Failed to load ${source.name} data:`, err.message)
+        setError(err)
+        // Continue to next source
       }
-      
-      // If all sources failed, stick with the fallback data
-      console.warn('🚨 All data sources failed, using built-in fallback data')
-      setLoadedResolution('BUILT_IN_FALLBACK')
-      setIsLoading(false)
     }
+    
+    // If all sources failed, stick with the fallback data
+    console.warn('🚨 All data sources failed, using built-in fallback data')
+    setLoadedResolution('BUILT_IN_FALLBACK')
+    setIsLoading(false)
+  }, [fetchHighResolutionData])
 
-    loadHighResolutionCountryData()
-  }, [resolution])
+  // Load data when resolution changes
+  useEffect(() => {
+    loadCountryData(currentResolution)
+  }, [currentResolution, loadCountryData])
+
+  // Function to change resolution
+  const changeResolution = useCallback((newResolution) => {
+    if (GEO_DATA_SOURCES[newResolution] && newResolution !== currentResolution) {
+      console.log(`🔄 Changing resolution from ${currentResolution} to ${newResolution}`)
+      setCurrentResolution(newResolution)
+    }
+  }, [currentResolution])
+
   return {
     countryData,
     isLoading,
     error,
     features: countryData.features || [],
+    currentResolution,
     loadedResolution,
+    changeResolution,
+    availableResolutions: Object.keys(GEO_DATA_SOURCES),
     // Utility functions for debugging and monitoring
     getCacheSize: () => dataCache.size,
     clearCache: () => {

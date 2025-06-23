@@ -4,7 +4,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { regions, getCountriesForRegion } from '../data/countriesData'
 import { getContinent } from '../data/worldCountriesGeoJSON'
-import { useWorldCountriesData } from '../hooks/useWorldCountriesData'
+import { useWorldCountriesDataWithResolution } from '../hooks/useWorldCountriesDataWithResolution'
+import MapQualityControls from './MapQualityControls'
 
 // Fix for default markers in React-Leaflet
 delete L.Icon.Default.prototype._getIconUrl
@@ -35,7 +36,14 @@ const MapViewController = ({ selectedRegion }) => {
 const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, correctlyGuessedCountries = [], feedback, incorrectAttempts = 0 }) => {
   const geoJsonRef = useRef()
   const [incorrectCountry, setIncorrectCountry] = useState(null)
-  const { countryData, isLoading } = useWorldCountriesData()
+  // Use enhanced hook with dynamic resolution changing
+  const { 
+    countryData, 
+    isLoading, 
+    currentResolution, 
+    loadedResolution, 
+    changeResolution 
+  } = useWorldCountriesDataWithResolution()
 
   // Clear incorrect country highlight when feedback changes
   useEffect(() => {
@@ -235,9 +243,15 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
     }
     return [[-90, -180], [90, 180]] // World bounds
   }
-
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      {/* Map Quality Controls */}
+      <MapQualityControls
+        currentResolution={currentResolution}
+        onResolutionChange={changeResolution}
+        isLoading={isLoading}
+      />
+      
       {isLoading && (
         <div style={{
           position: 'absolute',
@@ -259,9 +273,26 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
             border: '2px solid #ffffff30',
             borderTop: '2px solid #ffffff',
             borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          Loading real country boundaries...
+            animation: 'spin 1s linear infinite'          }}></div>
+          Loading high-resolution boundaries...
+        </div>
+      )}
+      
+      {/* Display current resolution indicator */}
+      {!isLoading && loadedResolution && (
+        <div style={{
+          position: 'absolute',
+          bottom: '10px',
+          right: '10px',
+          background: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '3px',
+          fontSize: '10px',
+          zIndex: 1000,
+          opacity: 0.8
+        }}>
+          Active: {loadedResolution.replace('_', ' ')}
         </div>
       )}
       <MapContainer
@@ -280,13 +311,16 @@ const WorldMap = ({ selectedRegion, onCountrySelect, currentCountry, gameState, 
           url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           maxZoom={10}
           minZoom={2}
-        />
-        <GeoJSON
+        />        <GeoJSON
           ref={geoJsonRef}
           data={countryData}
           style={getCountryStyle}
           onEachFeature={onEachCountry}
-          key={`${selectedRegion}-${gameState}-${correctlyGuessedCountries.length}-${incorrectAttempts}-${isLoading ? 'loading' : 'loaded'}`}
+          // Improved rendering options for better polygon definition
+          precision={6} // Higher precision for better accuracy
+          smoothFactor={0.5} // Lower smoothing for more detailed edges
+          tolerance={0} // No tolerance for maximum detail
+          key={`${selectedRegion}-${gameState}-${correctlyGuessedCountries.length}-${incorrectAttempts}-${currentResolution}-${loadedResolution}-${isLoading ? 'loading' : 'loaded'}`}
         />
         
         <MapViewController selectedRegion={selectedRegion} />

@@ -46,36 +46,10 @@ export const realWorldCountriesData = {
   ]
 };
 
-// Function to fetch complete world countries data
+// Function to fetch complete world countries data (legacy function - now handled by hook)
 export const fetchWorldCountriesData = async () => {
-  try {
-    const response = await fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson');
-    const data = await response.json();
-    
-    // Transform the data to match our expected format
-    const transformedData = {
-      type: "FeatureCollection",
-      features: data.features.map(feature => ({
-        type: "Feature",
-        properties: {
-          NAME: feature.properties.name,
-          NAME_LONG: feature.properties.name,
-          ABBREV: feature.properties.name,
-          ISO_A2: feature.properties.iso_a2 || "",
-          ISO_A3: feature.properties.iso_a3 || "",
-          CONTINENT: getContinent(feature.properties.name),
-          REGION_UN: getRegionUN(feature.properties.name),
-          SUBREGION: getSubregion(feature.properties.name)
-        },
-        geometry: feature.geometry
-      }))
-    };
-    
-    return transformedData;
-  } catch (error) {
-    console.error('Error fetching world countries data:', error);
-    return realWorldCountriesData; // fallback to static data
-  }
+  console.warn('⚠️ fetchWorldCountriesData is deprecated. Use useWorldCountriesData hook instead.')
+  return realWorldCountriesData;
 };
 
 // Comprehensive continent mapping based on Natural Earth data naming conventions
@@ -86,6 +60,7 @@ const continentMap = {
   'United States': 'North America', // Alternative name
   'Canada': 'North America',
   'Mexico': 'North America',
+  'Greenland': 'North America',
   'Guatemala': 'North America',
   'Belize': 'North America',
   'El Salvador': 'North America',
@@ -242,23 +217,27 @@ const continentMap = {
   'Cameroon': 'Africa',
   'Cape Verde': 'Africa',
   'Central African Republic': 'Africa',
+  'Central African Rep.': 'Africa',
   'Chad': 'Africa',
   'Comoros': 'Africa',
   'Democratic Republic of the Congo': 'Africa',
+  'Dem. Rep. Congo': 'Africa',
   'Republic of the Congo': 'Africa',
-  'Congo': 'Africa', // Alternative name
+  'Congo': 'Africa',
   'Djibouti': 'Africa',
   'Egypt': 'Africa',
   'Equatorial Guinea': 'Africa',
+  'Eq. Guinea': 'Africa',
   'Eritrea': 'Africa',
   'Ethiopia': 'Africa',
   'Gabon': 'Africa',
   'Gambia': 'Africa',
   'Ghana': 'Africa',
   'Guinea': 'Africa',
-  'Guinea Bissau': 'Africa', // This was missing!
+  'Guinea-Bissau': 'Africa',
+  'Guinea Bissau': 'Africa',
   'Ivory Coast': 'Africa',
-  "Cote d'Ivoire": 'Africa',
+  "Côte d'Ivoire": 'Africa',
   'Kenya': 'Africa',
   'Lesotho': 'Africa',
   'Liberia': 'Africa',
@@ -281,24 +260,29 @@ const continentMap = {
   'Somalia': 'Africa',
   'South Africa': 'Africa',
   'South Sudan': 'Africa',
+  'S. Sudan': 'Africa',
   'Sudan': 'Africa',
   'Swaziland': 'Africa',
+  'eSwatini': 'Africa',
   'Eswatini': 'Africa',
-  'Tanzania': 'Africa', // This was missing!
-  'United Republic of Tanzania': 'Africa', // Alternative name
+  'Tanzania': 'Africa',
+  'United Republic of Tanzania': 'Africa', 
   'Togo': 'Africa',
   'Tunisia': 'Africa',
   'Uganda': 'Africa',
   'Zambia': 'Africa',
   'Zimbabwe': 'Africa',
-  'Western Sahara': 'Africa', // This was missing!
+  'Western Sahara': 'Africa',
+  'W. Sahara': 'Africa',
   
   // Oceania
   'Australia': 'Oceania',
   'Papua New Guinea': 'Oceania',
   'New Zealand': 'Oceania',
+  'New Caledonia': 'Oceania',
   'Fiji': 'Oceania',
   'Solomon Islands': 'Oceania',
+  'Solomon Is.': 'Oceania',
   'Vanuatu': 'Oceania',
   'Samoa': 'Oceania',
   'Micronesia': 'Oceania',
