@@ -557,6 +557,83 @@ html, body {
   animation: spin 1s linear infinite;
 }
 
+/* TripWhiz Advertisement Button */
+.tripwhiz-ad-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 247, 255, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+  text-decoration: none;
+  min-width: 140px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tripwhiz-ad-button:hover {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border-color: #3498db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+  text-decoration: none;
+}
+
+.tripwhiz-ad-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3), 0 4px 15px rgba(52, 152, 219, 0.3);
+  border-color: #3498db;
+}
+
+.tripwhiz-logo-placeholder {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e74c3c 0%, #f39c12 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.tripwhiz-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.tripwhiz-ad-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.tripwhiz-main-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.tripwhiz-sub-text {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .quiz-header {
@@ -581,6 +658,27 @@ html, body {
   .game-controls {
     justify-content: center;
     width: 100%;
+  }
+  
+  .tripwhiz-ad-button {
+    order: -1; /* Show the ad button first on mobile */
+    min-width: 120px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .tripwhiz-logo-placeholder {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+  
+  .tripwhiz-main-text {
+    font-size: 0.8rem;
+  }
+  
+  .tripwhiz-sub-text {
+    font-size: 0.65rem;
   }
   
   .score-display {
@@ -724,6 +822,27 @@ html, body {
   .feedback-top-right {
     bottom: 10px; /* Changed from top to bottom */
     right: 10px;
+  }
+  
+  .tripwhiz-ad-button {
+    min-width: 100px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    gap: 0.3rem;
+  }
+  
+  .tripwhiz-logo-placeholder {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+  }
+  
+  .tripwhiz-main-text {
+    font-size: 0.75rem;
+  }
+  
+  .tripwhiz-sub-text {
+    font-size: 0.6rem;
   }
 }
 

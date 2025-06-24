@@ -338,10 +338,29 @@ const GeographyQuiz = () => {
                   </span>
                 </div>
               </div>
-            )}
-          </div>
+            )}          </div>
+          
+          {/* TripWhiz Advertisement Button */}
+          <a 
+            href="https://tripwhiz.onrender.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="tripwhiz-ad-button"
+            aria-label="Visit TripWhiz - Travel Planning Made Easy"
+          >            <div className="tripwhiz-logo-placeholder">
+              <img 
+                src="/tripwhiz.png" 
+                alt="TripWhiz Logo" 
+                className="tripwhiz-logo-image"
+              />
+            </div>
+            <div className="tripwhiz-ad-text">
+              <span className="tripwhiz-main-text">TripWhiz</span>
+              <span className="tripwhiz-sub-text">Plan Trips</span>
+            </div>
+          </a>
         </div>
-      </header>      {/* Current Question */}
+      </header>{/* Current Question */}
       {gameState === 'playing' && currentCountry && (
         <div className="current-question" role="main">
           <p className="question-text">
