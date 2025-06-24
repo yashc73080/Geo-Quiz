@@ -5,9 +5,9 @@ const MapQualityControls = ({ currentResolution, onResolutionChange, isLoading }
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   
   const resolutions = [
-    { key: 'HIGH_RES', label: 'High Detail', description: 'Best quality, most difficult' },
-    { key: 'MEDIUM_RES', label: 'Medium Detail', description: 'Good balance, easier' },
-    { key: 'ALTERNATIVE', label: 'Alternative Source', description: 'Different data source' }
+    { key: 'ALTERNATIVE', label: 'High Detail', description: 'More detailed' },
+    { key: 'HIGH_RES', label: 'Medium Detail', description: 'Good balance, difficult' },
+    { key: 'MEDIUM_RES', label: 'Low Detail', description: 'Simpler map, easier' },
   ]
 
   const toggleMenu = () => {
