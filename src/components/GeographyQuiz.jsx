@@ -293,9 +293,15 @@ const GeographyQuiz = () => {
 
   return (
     <div className="geography-quiz">      {/* Header */}
-      <header className="quiz-header">
-        <div className="header-content">
-          <h1 className="app-title">GeoQuest</h1>
+      <header className="quiz-header">        <div className="header-content">
+          <h1 className="app-title">
+            <img 
+              src="/favicon.svg" 
+              alt="Globe" 
+              className="app-title-icon"
+            />
+            GeoQuest
+          </h1>
           
           <div className="game-info">
             <div className="game-controls">
@@ -431,7 +437,7 @@ const GeographyQuiz = () => {
             <h2 className="message-title">Welcome to GeoQuest!</h2>
             <p className="message-content">
               Test your geography knowledge by finding countries on the world map. 
-              Select a region below and start your quiz!
+              Select a region to the right and start your quiz!
             </p>            <p className="message-content">
               <strong>Selected Regions:</strong> {selectedRegions.map(region => regions[region].name).join(', ')}
             </p>

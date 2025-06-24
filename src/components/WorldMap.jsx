@@ -298,8 +298,7 @@ const WorldMap = ({ selectedRegions, onCountrySelect, currentCountry, gameState,
         }}>
           Active: {loadedResolution.replace('_', ' ')}
         </div>
-      )}
-      <MapContainer
+      )}      <MapContainer
         bounds={getInitialBounds()}
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
@@ -308,14 +307,14 @@ const WorldMap = ({ selectedRegions, onCountrySelect, currentCountry, gameState,
         touchZoom={true}
         boxZoom={false}
         keyboard={true}
-        attributionControl={true}
+        attributionControl={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          attribution=""
           url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           maxZoom={10}
           minZoom={2}
-        />        <GeoJSON
+        /><GeoJSON
           ref={geoJsonRef}
           data={countryData}
           style={getCountryStyle}

@@ -115,9 +115,10 @@ html, body {
   flex-shrink: 0;
 }
 
-.app-title::before {
-  content: "🌍";
-  font-size: 1.8rem;
+.app-title-icon {
+  width: 1.8rem;
+  height: 1.8rem;
+  flex-shrink: 0;
 }
 
 .game-info {
