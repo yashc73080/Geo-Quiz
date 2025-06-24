@@ -3,11 +3,10 @@ import { Menu, X } from 'lucide-react'
 
 const MapQualityControls = ({ currentResolution, onResolutionChange, isLoading }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  
-  const resolutions = [
-    { key: 'ALTERNATIVE', label: 'High Detail', description: 'More detailed' },
-    { key: 'HIGH_RES', label: 'Medium Detail', description: 'Good balance, difficult' },
-    { key: 'MEDIUM_RES', label: 'Low Detail', description: 'Simpler map, easier' },
+    const resolutions = [
+    { key: 'HIGH_RES', label: 'High Detail', description: 'More detailed' },
+    { key: 'MEDIUM_RES', label: 'Medium Detail', description: 'Good balance, difficult' },
+    { key: 'LOW_RES', label: 'Low Detail', description: 'Simpler map, easier' },
   ]
 
   const toggleMenu = () => {

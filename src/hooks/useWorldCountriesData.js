@@ -4,14 +4,14 @@ import { getContinent, getRegionUN, getSubregion } from '../data/worldCountriesG
 
 // High-resolution GeoJSON sources for better country boundaries
 const GEO_DATA_SOURCES = {
-  // Very high resolution - best detail but larger file size
-  HIGH_RES: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
+  // Very high resolution - best detail but larger file size (previously ALTERNATIVE)
+  HIGH_RES: 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson',
   
-  // Medium resolution - good balance of detail and performance
-  MEDIUM_RES: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson',
+  // Medium resolution - good balance of detail and performance (previously HIGH_RES)
+  MEDIUM_RES: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
   
-  // Alternative high-quality source
-  ALTERNATIVE: 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson',
+  // Low resolution - simpler map for easier gameplay (previously MEDIUM_RES)
+  LOW_RES: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson',
   
   // Fallback source (current one)
   FALLBACK: 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson'
@@ -21,7 +21,7 @@ const GEO_DATA_SOURCES = {
 const dataCache = new Map()
 
 // Custom hook to manage world countries data with improved resolution
-export const useWorldCountriesData = (resolution = 'HIGH_RES') => {
+export const useWorldCountriesData = (resolution = 'MEDIUM_RES') => {
   const [countryData, setCountryData] = useState(realWorldCountriesData)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -89,11 +89,9 @@ export const useWorldCountriesData = (resolution = 'HIGH_RES') => {
     const loadHighResolutionCountryData = async () => {
       setIsLoading(true)
       setError(null)
-      
-      const sources = [
+        const sources = [
         { url: GEO_DATA_SOURCES[resolution], name: resolution },
-        { url: GEO_DATA_SOURCES.MEDIUM_RES, name: 'MEDIUM_RES' },
-        { url: GEO_DATA_SOURCES.ALTERNATIVE, name: 'ALTERNATIVE' },
+        { url: GEO_DATA_SOURCES.LOW_RES, name: 'LOW_RES' },
         { url: GEO_DATA_SOURCES.FALLBACK, name: 'FALLBACK' }
       ]
 
